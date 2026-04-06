@@ -1,0 +1,33 @@
+farlands:
+  enabled: true
+  threshold: 12000000
+  intensity: 1.0
+  max-pillar-height: 70
+  base-carve-chance: 0.08
+  worlds:
+    - world
+  boss-event:
+    enabled: true
+    spawn-cooldown-seconds: 900
+    loot:
+      diamonds: 8
+      netherite-scrap: 2
+      echo-shards: 6
+
+tiersmp:
+  max-tier: 5
+  rankup:
+    required-kills: 3
+    required-quest-progress: 20
+  rankdown:
+    on-player-death: true
+  lives:
+    max-lives: 3
+    max-crafts-per-player: 3
+  classes:
+    warrior:
+      description: High melee sustain
+    ranger:
+      description: Better ranged pressure
+    mage:
+      description: Utility and burst tools
