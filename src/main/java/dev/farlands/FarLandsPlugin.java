@@ -9,8 +9,8 @@ import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.configuration.file.FileConfiguration;
-import org.bukkit.inventory.ShapedRecipe;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.ShapedRecipe;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -65,6 +65,7 @@ public final class FarLandsPlugin extends JavaPlugin {
         }
 
         registerLifeCrystalRecipe();
+        registerRevivalBeaconRecipe();
 
         getLogger().info("FarLands12111 enabled with TierSMP support.");
     }
@@ -73,10 +74,21 @@ public final class FarLandsPlugin extends JavaPlugin {
         NamespacedKey key = new NamespacedKey(this, "life_crystal");
         ItemStack result = tierService.createLifeCrystal();
         ShapedRecipe recipe = new ShapedRecipe(key, result);
-        recipe.shape("AEA", "ENE", "AEA");
-        recipe.setIngredient('A', Material.AMETHYST_SHARD);
-        recipe.setIngredient('E', Material.ENDER_PEARL);
-        recipe.setIngredient('N', Material.NETHER_STAR);
+        recipe.shape("PEP", "EHE", "PEP");
+        recipe.setIngredient('P', Material.PRISMARINE_CRYSTALS);
+        recipe.setIngredient('E', Material.ENDER_EYE);
+        recipe.setIngredient('H', Material.HEART_OF_THE_SEA);
+        Bukkit.addRecipe(recipe);
+    }
+
+    private void registerRevivalBeaconRecipe() {
+        NamespacedKey key = new NamespacedKey(this, "revival_beacon");
+        ItemStack result = tierService.createRevivalBeacon();
+        ShapedRecipe recipe = new ShapedRecipe(key, result);
+        recipe.shape("OOO", "OLO", "OBO");
+        recipe.setIngredient('O', Material.OBSIDIAN);
+        recipe.setIngredient('L', Material.HEART_OF_THE_SEA);
+        recipe.setIngredient('B', Material.BEACON);
         Bukkit.addRecipe(recipe);
     }
 

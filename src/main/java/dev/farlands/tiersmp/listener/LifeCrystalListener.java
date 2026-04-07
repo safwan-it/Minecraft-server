@@ -31,7 +31,12 @@ public final class LifeCrystalListener implements Listener {
     @EventHandler
     public void onPrepareCraft(PrepareItemCraftEvent event) {
         Recipe recipe = event.getRecipe();
-        if (recipe == null || recipe.getResult().getType() != Material.AMETHYST_SHARD) {
+        if (recipe == null) {
+            return;
+        }
+
+        ItemStack result = recipe.getResult();
+        if (!tierService.isLifeCrystal(result)) {
             return;
         }
 
@@ -41,9 +46,6 @@ public final class LifeCrystalListener implements Listener {
 
         if (!tierService.canCraftLifeCrystal(player)) {
             event.getInventory().setResult(new ItemStack(Material.AIR));
-        } else {
-            ItemStack result = tierService.createLifeCrystal();
-            event.getInventory().setResult(result);
         }
     }
 

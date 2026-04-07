@@ -15,19 +15,32 @@ farlands:
       echo-shards: 6
 
 tiersmp:
-  max-tier: 5
+  max-tier: 6
   rankup:
-    required-kills: 3
-    required-quest-progress: 20
+    required-kills: 1
   rankdown:
     on-player-death: true
   lives:
     max-lives: 3
     max-crafts-per-player: 3
+  quest-path:
+    tier-1: Catch 10 fish + 1 player kill
+    tier-2: Mine 16 diamonds + 1 player kill
+    tier-3: Wear full diamond armor + 1 player kill
+    tier-4: Kill the Ender Dragon + 1 player kill
+    tier-5: Defeat the Far Lands boss + 1 player kill
+    tier-6: No quest
+  tier-buffs:
+    tier-1: 6 hearts
+    tier-2: 8 hearts + Speed I
+    tier-3: 10 hearts + Strength I
+    tier-4: 12 hearts + Resistance I
+    tier-5: 14 hearts and all previous buffs
+    tier-6: 16 hearts and all previous buffs
   classes:
     warrior:
-      description: High melee sustain
+      ability: Permanent Strength I
     ranger:
-      description: Better ranged pressure
-    mage:
-      description: Utility and burst tools
+      ability: Jump Boost II
+    guardian:
+      ability: Haste I

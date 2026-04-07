@@ -99,6 +99,11 @@ public final class FarLandsBossEventListener implements Listener {
         event.getDrops().add(new ItemStack(Material.ECHO_SHARD, plugin.getConfig().getInt("farlands.boss-event.loot.echo-shards", 6)));
         event.getDrops().add(plugin.getTierService().createLifeCrystal());
 
+        Player killer = entity.getKiller();
+        if (killer != null) {
+            plugin.getTierService().onFarLandsBossKill(killer);
+        }
+
         Bukkit.broadcastMessage(ChatColor.GOLD + "The Far Lands Aberration was defeated! Loot dropped at its death location.");
     }
 }

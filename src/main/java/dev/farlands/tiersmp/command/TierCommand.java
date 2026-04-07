@@ -25,9 +25,16 @@ public final class TierCommand implements CommandExecutor {
         }
 
         TierProfile profile = tierService.getProfile(player.getUniqueId());
+        int questTarget = tierService.getQuestTargetForPlayer(player);
+
         sender.sendMessage(ChatColor.GOLD + "Tier: " + profile.getTier());
         sender.sendMessage(ChatColor.YELLOW + "Kills: " + profile.getKills() + "/" + tierService.getKillsRequired());
-        sender.sendMessage(ChatColor.GREEN + "Quest: " + profile.getQuestProgress() + "/" + tierService.getQuestRequired());
+        if (questTarget <= 0) {
+            sender.sendMessage(ChatColor.GREEN + "Quest: none at this tier");
+        } else {
+            sender.sendMessage(ChatColor.GREEN + "Quest: " + profile.getQuestProgress() + "/" + questTarget);
+            sender.sendMessage(ChatColor.GREEN + "Quest Goal: " + tierService.getQuestDescriptionForPlayer(player));
+        }
         sender.sendMessage(ChatColor.AQUA + "Class: " + (profile.getSelectedClass() == null ? "not selected" : profile.getSelectedClass()));
         sender.sendMessage(ChatColor.LIGHT_PURPLE + "Lives: " + profile.getLives() + "/" + tierService.getMaxLives());
         sender.sendMessage(ChatColor.LIGHT_PURPLE + "Life crystals crafted: " + profile.getCraftedLifeCrystals() + "/" + tierService.getMaxLifeCrystalCrafts());

@@ -3,12 +3,15 @@ package dev.farlands.tiersmp;
 import dev.farlands.FarLandsPlugin;
 import dev.farlands.tiersmp.model.TierProfile;
 import org.bukkit.*;
+import org.bukkit.attribute.Attribute;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
+import org.bukkit.potion.PotionEffect;
+import org.bukkit.potion.PotionEffectType;
 
 import java.io.File;
 import java.io.IOException;
@@ -16,17 +19,18 @@ import java.util.*;
 
 public final class TierService {
 
-    public static final String LIFE_CRYSTAL_NAME = ChatColor.LIGHT_PURPLE + "Life Crystal";
+    public static final String LIFE_CRYSTAL_NAME = ChatColor.LIGHT_PURPLE + "Ancient Life Crystal";
+    public static final String REVIVAL_BEACON_NAME = ChatColor.GOLD + "Revival Beacon";
 
     private final FarLandsPlugin plugin;
     private final Map<UUID, TierProfile> profiles = new HashMap<>();
     private final Set<String> allowedClasses = new TreeSet<>();
     private final File dataFolder;
     private final NamespacedKey lifeCrystalKey;
+    private final NamespacedKey revivalBeaconKey;
 
     private int maxTier;
     private int killsRequired;
-    private int questRequired;
     private boolean rankDownOnPvpDeath;
     private int maxLives;
     private int maxLifeCrystalCrafts;
@@ -38,13 +42,13 @@ public final class TierService {
             dataFolder.mkdirs();
         }
         this.lifeCrystalKey = new NamespacedKey(plugin, "life_crystal");
+        this.revivalBeaconKey = new NamespacedKey(plugin, "revival_beacon");
         reloadSettings();
     }
 
     public void reloadSettings() {
-        maxTier = Math.max(5, plugin.getConfig().getInt("tiersmp.max-tier", 5));
-        killsRequired = Math.max(1, plugin.getConfig().getInt("tiersmp.rankup.required-kills", 3));
-        questRequired = Math.max(1, plugin.getConfig().getInt("tiersmp.rankup.required-quest-progress", 20));
+        maxTier = Math.max(5, plugin.getConfig().getInt("tiersmp.max-tier", 6));
+        killsRequired = Math.max(0, plugin.getConfig().getInt("tiersmp.rankup.required-kills", 1));
         rankDownOnPvpDeath = plugin.getConfig().getBoolean("tiersmp.rankdown.on-player-death", true);
         maxLives = Math.max(1, plugin.getConfig().getInt("tiersmp.lives.max-lives", 3));
         maxLifeCrystalCrafts = Math.max(1, plugin.getConfig().getInt("tiersmp.lives.max-crafts-per-player", 3));
@@ -60,23 +64,6 @@ public final class TierService {
 
     public TierProfile getProfile(UUID playerId) {
         return profiles.computeIfAbsent(playerId, this::loadProfile);
-    }
-
-    public void addQuestProgress(Player player, int amount) {
-        TierProfile profile = getProfile(player.getUniqueId());
-        if (profile.isDead() || profile.isQuestCompleted() || profile.getTier() >= maxTier) {
-            return;
-        }
-
-        int next = profile.getQuestProgress() + amount;
-        profile.setQuestProgress(next);
-        if (next >= questRequired) {
-            profile.setQuestCompleted(true);
-            player.sendMessage(ChatColor.GREEN + "Tier quest completed! Now get kills to rank up.");
-        }
-
-        tryRankUp(player, profile);
-        saveProfile(profile);
     }
 
     public void addKill(Player killer) {
@@ -101,6 +88,7 @@ public final class TierService {
             profile.setTier(profile.getTier() - 1);
             profile.resetForNextTier();
             victim.sendMessage(ChatColor.RED + "You died in PvP and dropped to Tier " + profile.getTier() + ".");
+            applyTierBuffs(victim);
         } else {
             profile.setLives(profile.getLives() - 1);
             victim.sendMessage(ChatColor.RED + "You lost a life. Lives left: " + profile.getLives());
@@ -112,12 +100,90 @@ public final class TierService {
         saveProfile(profile);
     }
 
+    public void onFishCatch(Player player) {
+        updateQuest(player, "FISH", 1);
+    }
+
+    public void onDiamondMined(Player player) {
+        updateQuest(player, "MINE_DIAMOND", 1);
+    }
+
+    public void onFullDiamondArmor(Player player) {
+        updateQuest(player, "FULL_DIAMOND", 1);
+    }
+
+    public void onDragonKill(Player player) {
+        updateQuest(player, "KILL_DRAGON", 1);
+    }
+
+    public void onFarLandsBossKill(Player player) {
+        updateQuest(player, "KILL_FARLANDS_BOSS", 1);
+    }
+
+    private void updateQuest(Player player, String questType, int amount) {
+        TierProfile profile = getProfile(player.getUniqueId());
+        if (profile.isDead() || profile.isQuestCompleted() || profile.getTier() >= maxTier) {
+            return;
+        }
+
+        if (!getQuestType(profile.getTier()).equals(questType)) {
+            return;
+        }
+
+        int next = profile.getQuestProgress() + amount;
+        profile.setQuestProgress(next);
+
+        int target = getQuestTarget(profile.getTier());
+        if (next >= target) {
+            profile.setQuestCompleted(true);
+            player.sendMessage(ChatColor.GREEN + "Quest complete: " + getQuestDescription(profile.getTier()));
+        } else {
+            player.sendMessage(ChatColor.GRAY + "Quest progress: " + next + "/" + target + " - " + getQuestDescription(profile.getTier()));
+        }
+
+        tryRankUp(player, profile);
+        saveProfile(profile);
+    }
+
+    public String getQuestDescription(int tier) {
+        return switch (tier) {
+            case 1 -> "Catch 10 fish";
+            case 2 -> "Mine 16 diamonds";
+            case 3 -> "Wear full diamond armor";
+            case 4 -> "Kill the Ender Dragon";
+            case 5 -> "Defeat the Far Lands boss";
+            default -> "No quest at this tier";
+        };
+    }
+
+    public int getQuestTarget(int tier) {
+        return switch (tier) {
+            case 1 -> 10;
+            case 2 -> 16;
+            case 3 -> 1;
+            case 4 -> 1;
+            case 5 -> 1;
+            default -> 0;
+        };
+    }
+
+    public String getQuestType(int tier) {
+        return switch (tier) {
+            case 1 -> "FISH";
+            case 2 -> "MINE_DIAMOND";
+            case 3 -> "FULL_DIAMOND";
+            case 4 -> "KILL_DRAGON";
+            case 5 -> "KILL_FARLANDS_BOSS";
+            default -> "NONE";
+        };
+    }
+
     private void eliminate(Player player, TierProfile profile) {
         profile.setTier(1);
         profile.setLives(0);
         profile.setDead(true);
         player.setGameMode(GameMode.SPECTATOR);
-        Bukkit.broadcastMessage(ChatColor.DARK_RED + player.getName() + " has been eliminated. Revive at a beacon with /revive " + player.getName());
+        Bukkit.broadcastMessage(ChatColor.DARK_RED + player.getName() + " has been eliminated. Revive them with a Revival Beacon and /revive.");
     }
 
     public boolean chooseClass(Player player, String classId) {
@@ -128,6 +194,7 @@ public final class TierService {
         TierProfile profile = getProfile(player.getUniqueId());
         profile.setSelectedClass(normalized);
         saveProfile(profile);
+        applyTierBuffs(player);
         return true;
     }
 
@@ -136,7 +203,10 @@ public final class TierService {
         if (profile.isDead()) {
             player.setGameMode(GameMode.SPECTATOR);
             player.sendMessage(ChatColor.RED + "You are eliminated. Wait for a beacon revive.");
+            return;
         }
+
+        applyTierBuffs(player);
     }
 
     public boolean revive(Player reviver, Player target) {
@@ -151,6 +221,11 @@ public final class TierService {
             return false;
         }
 
+        if (!consumeRevivalBeacon(reviver)) {
+            reviver.sendMessage(ChatColor.RED + "You need a Revival Beacon item in your main hand.");
+            return false;
+        }
+
         targetProfile.setDead(false);
         targetProfile.setLives(1);
         targetProfile.setTier(1);
@@ -159,8 +234,18 @@ public final class TierService {
 
         target.setGameMode(GameMode.SURVIVAL);
         target.teleport(reviver.getLocation());
+        applyTierBuffs(target);
         target.sendMessage(ChatColor.GREEN + "You were revived at the beacon by " + reviver.getName() + "!");
         reviver.sendMessage(ChatColor.GREEN + "You revived " + target.getName() + ".");
+        return true;
+    }
+
+    private boolean consumeRevivalBeacon(Player player) {
+        ItemStack held = player.getInventory().getItemInMainHand();
+        if (!isRevivalBeacon(held)) {
+            return false;
+        }
+        held.setAmount(Math.max(0, held.getAmount() - 1));
         return true;
     }
 
@@ -203,30 +288,51 @@ public final class TierService {
         }
 
         profile.setLives(profile.getLives() + 1);
-        int newAmount = held.getAmount() - 1;
-        held.setAmount(Math.max(0, newAmount));
+        held.setAmount(Math.max(0, held.getAmount() - 1));
         player.sendMessage(ChatColor.GREEN + "Life crystal used. Lives: " + profile.getLives() + "/" + maxLives);
         saveProfile(profile);
         return true;
     }
 
     public ItemStack createLifeCrystal() {
-        ItemStack crystal = new ItemStack(Material.AMETHYST_SHARD);
+        ItemStack crystal = new ItemStack(Material.HEART_OF_THE_SEA);
         ItemMeta meta = crystal.getItemMeta();
         if (meta != null) {
             meta.setDisplayName(LIFE_CRYSTAL_NAME);
+            meta.setLore(List.of(ChatColor.GRAY + "Use to restore one life."));
             meta.getPersistentDataContainer().set(lifeCrystalKey, PersistentDataType.INTEGER, 1);
             crystal.setItemMeta(meta);
         }
         return crystal;
     }
 
+    public ItemStack createRevivalBeacon() {
+        ItemStack beacon = new ItemStack(Material.BEACON);
+        ItemMeta meta = beacon.getItemMeta();
+        if (meta != null) {
+            meta.setDisplayName(REVIVAL_BEACON_NAME);
+            meta.setLore(List.of(ChatColor.GRAY + "Consumed when reviving a dead player."));
+            meta.getPersistentDataContainer().set(revivalBeaconKey, PersistentDataType.INTEGER, 1);
+            beacon.setItemMeta(meta);
+        }
+        return beacon;
+    }
+
     public boolean isLifeCrystal(ItemStack stack) {
-        if (stack == null || stack.getType() != Material.AMETHYST_SHARD || !stack.hasItemMeta()) {
+        if (stack == null || stack.getType() != Material.HEART_OF_THE_SEA || !stack.hasItemMeta()) {
             return false;
         }
         ItemMeta meta = stack.getItemMeta();
         Integer marker = meta.getPersistentDataContainer().get(lifeCrystalKey, PersistentDataType.INTEGER);
+        return marker != null && marker == 1;
+    }
+
+    public boolean isRevivalBeacon(ItemStack stack) {
+        if (stack == null || stack.getType() != Material.BEACON || !stack.hasItemMeta()) {
+            return false;
+        }
+        ItemMeta meta = stack.getItemMeta();
+        Integer marker = meta.getPersistentDataContainer().get(revivalBeaconKey, PersistentDataType.INTEGER);
         return marker != null && marker == 1;
     }
 
@@ -241,6 +347,63 @@ public final class TierService {
         saveProfile(profile);
     }
 
+    public void applyTierBuffs(Player player) {
+        TierProfile profile = getProfile(player.getUniqueId());
+        if (profile.isDead()) {
+            return;
+        }
+
+        double maxHealth = switch (profile.getTier()) {
+            case 1 -> 12.0; // 6 hearts
+            case 2 -> 16.0;
+            case 3 -> 20.0;
+            case 4 -> 24.0;
+            case 5 -> 28.0;
+            default -> 32.0;
+        };
+
+        if (player.getAttribute(Attribute.MAX_HEALTH) != null) {
+            player.getAttribute(Attribute.MAX_HEALTH).setBaseValue(maxHealth);
+            if (player.getHealth() > maxHealth) {
+                player.setHealth(maxHealth);
+            }
+        }
+
+        player.removePotionEffect(PotionEffectType.SPEED);
+        player.removePotionEffect(PotionEffectType.INCREASE_DAMAGE);
+        player.removePotionEffect(PotionEffectType.DAMAGE_RESISTANCE);
+
+        if (profile.getTier() >= 2) {
+            player.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, Integer.MAX_VALUE, 0, true, false));
+        }
+        if (profile.getTier() >= 3) {
+            player.addPotionEffect(new PotionEffect(PotionEffectType.INCREASE_DAMAGE, Integer.MAX_VALUE, 0, true, false));
+        }
+        if (profile.getTier() >= 4) {
+            player.addPotionEffect(new PotionEffect(PotionEffectType.DAMAGE_RESISTANCE, Integer.MAX_VALUE, 0, true, false));
+        }
+
+        applyClassEffects(player, profile.getSelectedClass());
+    }
+
+    private void applyClassEffects(Player player, String selectedClass) {
+        player.removePotionEffect(PotionEffectType.FAST_DIGGING);
+        player.removePotionEffect(PotionEffectType.JUMP);
+        player.removePotionEffect(PotionEffectType.LUCK);
+
+        if (selectedClass == null) {
+            return;
+        }
+
+        switch (selectedClass) {
+            case "warrior" -> player.addPotionEffect(new PotionEffect(PotionEffectType.INCREASE_DAMAGE, Integer.MAX_VALUE, 0, true, false));
+            case "ranger" -> player.addPotionEffect(new PotionEffect(PotionEffectType.JUMP, Integer.MAX_VALUE, 1, true, false));
+            case "guardian" -> player.addPotionEffect(new PotionEffect(PotionEffectType.FAST_DIGGING, Integer.MAX_VALUE, 0, true, false));
+            default -> {
+            }
+        }
+    }
+
     public Set<String> getAllowedClasses() {
         return Collections.unmodifiableSet(allowedClasses);
     }
@@ -249,8 +412,12 @@ public final class TierService {
         return killsRequired;
     }
 
-    public int getQuestRequired() {
-        return questRequired;
+    public int getQuestTargetForPlayer(Player player) {
+        return getQuestTarget(getProfile(player.getUniqueId()).getTier());
+    }
+
+    public String getQuestDescriptionForPlayer(Player player) {
+        return getQuestDescription(getProfile(player.getUniqueId()).getTier());
     }
 
     public int getMaxLives() {
@@ -279,6 +446,7 @@ public final class TierService {
         profile.setTier(nextTier);
         profile.resetForNextTier();
         player.sendMessage(ChatColor.AQUA + "You ranked up to Tier " + nextTier + "!");
+        applyTierBuffs(player);
     }
 
     private TierProfile loadProfile(UUID playerId) {
