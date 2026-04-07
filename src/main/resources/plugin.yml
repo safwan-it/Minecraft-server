@@ -1,0 +1,34 @@
+name: FarLands12111
+version: 1.7.0
+main: dev.farlands.FarLandsPlugin
+api-version: '1.21'
+authors: [Codex]
+description: Paper plugin with Far Lands generation and TierSMP progression.
+
+commands:
+  farlands:
+    description: Far Lands plugin controls
+    usage: /farlands <reload|tp [x z]>
+    permission: farlands.admin
+  tier:
+    description: View your tier progress
+    usage: /tier
+    permission: tiersmp.use
+  class:
+    description: Choose your Tier 5 class
+    usage: /class <list|gui|choose>
+    permission: tiersmp.use
+  revive:
+    description: Revive an eliminated player near a beacon
+    usage: /revive <player>
+    permission: tiersmp.revive
+permissions:
+  farlands.admin:
+    description: Access to FarLands admin commands.
+    default: op
+  tiersmp.use:
+    description: Access TierSMP player commands.
+    default: true
+  tiersmp.revive:
+    description: Permission to revive dead players at beacons.
+    default: op
