@@ -24,6 +24,7 @@ public final class FarLandsBossEventListener implements Listener {
     private final FarLandsPlugin plugin;
     private final Set<UUID> activeBosses = new HashSet<>();
     private long lastSpawnAtMillis;
+    private long nextBossRefreshAtMillis;
 
     public FarLandsBossEventListener(FarLandsPlugin plugin) {
         this.plugin = plugin;
@@ -52,6 +53,12 @@ public final class FarLandsBossEventListener implements Listener {
             return;
         }
 
+        long cooldownMs = plugin.getConfig().getLong("farlands.boss-event.spawn-cooldown-seconds", 900) * 1000L;
+        long now = System.currentTimeMillis();
+        if ((now - lastSpawnAtMillis) < cooldownMs) {
+            return;
+        }
+
         if (!activeBosses.isEmpty()) {
             return;
         }
@@ -60,8 +67,14 @@ public final class FarLandsBossEventListener implements Listener {
             return;
         }
 
-        long cooldownMs = plugin.getConfig().getLong("farlands.boss-event.spawn-cooldown-seconds", 900) * 1000L;
-        if ((System.currentTimeMillis() - lastSpawnAtMillis) < cooldownMs) {
+        if (now < nextBossRefreshAtMillis) {
+            return;
+        }
+        long refreshIntervalMs = plugin.getConfig().getLong("farlands.boss-event.active-boss-refresh-interval-seconds", 10) * 1000L;
+        nextBossRefreshAtMillis = now + Math.max(1_000L, refreshIntervalMs);
+
+        refreshActiveBosses();
+        if (!activeBosses.isEmpty()) {
             return;
         }
 

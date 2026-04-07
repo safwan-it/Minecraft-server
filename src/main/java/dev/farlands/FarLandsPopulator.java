@@ -86,10 +86,17 @@ public final class FarLandsPopulator implements Listener {
     }
 
     private boolean isWallColumn(int x, int z, double factor) {
-        int grid = 26;
-        int thickness = 3 + Math.min(3, (int) Math.floor(factor));
-        int rx = Math.floorMod(x, grid);
-        int rz = Math.floorMod(z, grid);
+        double clusterNoise = (blockNoise(x, z, 96) * 0.55D) + (blockNoise(x + 41, z - 63, 48) * 0.45D);
+        if (clusterNoise < -0.06D) {
+            return false;
+        }
+
+        int grid = 20 + (int) Math.round((blockNoise(x + 500, z - 500, 128) + 1.0D) * 5.0D);
+        int thickness = 2 + Math.min(4, (int) Math.floor(factor));
+        int warpX = (int) Math.round(blockNoise(x - 93, z + 27, 40) * 7.0D);
+        int warpZ = (int) Math.round(blockNoise(x + 57, z - 29, 40) * 7.0D);
+        int rx = Math.floorMod(x + warpX, grid);
+        int rz = Math.floorMod(z + warpZ, grid);
         boolean xWall = rx < thickness || rx >= (grid - thickness);
         boolean zWall = rz < thickness || rz >= (grid - thickness);
         if (!(xWall || zWall)) {
@@ -97,7 +104,7 @@ public final class FarLandsPopulator implements Listener {
         }
 
         // Keep repeating gaps so the pattern feels glitched/segmented.
-        return blockNoise(x + 133, z - 77, 13) > -0.28D;
+        return blockNoise(x + 133, z - 77, 13) > -0.33D;
     }
 
     private void buildFarLandsWall(World world, int x, int z, int highestY, Material surfaceType, double factor) {
@@ -116,13 +123,14 @@ public final class FarLandsPopulator implements Listener {
 
     private void carveWallCaves(World world, int x, int z, int topY, double factor) {
         int minY = Math.max(world.getMinHeight() + 20, topY - (45 + (int) (factor * 6)));
-        for (int y = minY; y < topY - 3; y++) {
+        for (int y = minY; y < topY - 3; y += 2) {
             double caveNoise = blockNoise(x + y, z - y, 8);
             double tunnelNoise = blockNoise((x * 2) - y, (z * 2) + y, 11);
             if (caveNoise > 0.36D || (caveNoise > 0.22D && tunnelNoise > 0.40D)) {
                 world.getBlockAt(x, y, z).setType(Material.AIR, false);
+                world.getBlockAt(x, y + 1, z).setType(Material.AIR, false);
                 if (blockNoise(x + y * 3, z - y * 2, 7) > 0.55D) {
-                    world.getBlockAt(x, y + 1, z).setType(Material.AIR, false);
+                    world.getBlockAt(x, y - 1, z).setType(Material.AIR, false);
                 }
             }
         }

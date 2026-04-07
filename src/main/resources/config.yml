@@ -9,6 +9,7 @@ farlands:
   boss-event:
     enabled: true
     spawn-cooldown-seconds: 900
+    active-boss-refresh-interval-seconds: 10
     loot:
       diamonds: 8
       netherite-scrap: 2
