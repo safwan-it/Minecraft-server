@@ -51,8 +51,11 @@ public final class FarLandsPopulator implements Listener {
                     continue;
                 }
 
-                mutateTerrainColumn(world, worldX, worldZ, highestY, surface.getType(), distanceFactor);
-                carveSurface(world, worldX, worldZ, highestY, distanceFactor);
+                if (isWallColumn(worldX, worldZ, distanceFactor)) {
+                    buildFarLandsWall(world, worldX, worldZ, highestY, surface.getType(), distanceFactor);
+                } else {
+                    mutateTerrainColumn(world, worldX, worldZ, highestY, surface.getType(), distanceFactor);
+                }
             }
         }
     }
@@ -65,6 +68,7 @@ public final class FarLandsPopulator implements Listener {
             if (shouldCreateShelf(x, z, factor)) {
                 createShelf(world, x, z, topY, surfaceType, factor);
             }
+            carveSurface(world, x, z, topY, factor);
             return;
         }
 
@@ -76,6 +80,50 @@ public final class FarLandsPopulator implements Listener {
                     break;
                 }
                 world.getBlockAt(x, y, z).setType(Material.AIR, false);
+            }
+            carveSurface(world, x, z, highestY, factor);
+        }
+    }
+
+    private boolean isWallColumn(int x, int z, double factor) {
+        int grid = 26;
+        int thickness = 3 + Math.min(3, (int) Math.floor(factor));
+        int rx = Math.floorMod(x, grid);
+        int rz = Math.floorMod(z, grid);
+        boolean xWall = rx < thickness || rx >= (grid - thickness);
+        boolean zWall = rz < thickness || rz >= (grid - thickness);
+        if (!(xWall || zWall)) {
+            return false;
+        }
+
+        // Keep repeating gaps so the pattern feels glitched/segmented.
+        return blockNoise(x + 133, z - 77, 13) > -0.28D;
+    }
+
+    private void buildFarLandsWall(World world, int x, int z, int highestY, Material surfaceType, double factor) {
+        int maxY = world.getMaxHeight() - 2;
+        int minWallTop = Math.max(highestY + 8, maxY - 64);
+        int randomDrop = (int) (Math.abs(blockNoise(x, z, 9)) * 22);
+        int topY = Math.max(minWallTop, maxY - randomDrop);
+
+        Material fill = pickPillarMaterial(surfaceType);
+        for (int y = highestY + 1; y <= topY; y++) {
+            world.getBlockAt(x, y, z).setType(fill, false);
+        }
+
+        carveWallCaves(world, x, z, topY, factor);
+    }
+
+    private void carveWallCaves(World world, int x, int z, int topY, double factor) {
+        int minY = Math.max(world.getMinHeight() + 20, topY - (45 + (int) (factor * 6)));
+        for (int y = minY; y < topY - 3; y++) {
+            double caveNoise = blockNoise(x + y, z - y, 8);
+            double tunnelNoise = blockNoise((x * 2) - y, (z * 2) + y, 11);
+            if (caveNoise > 0.36D || (caveNoise > 0.22D && tunnelNoise > 0.40D)) {
+                world.getBlockAt(x, y, z).setType(Material.AIR, false);
+                if (blockNoise(x + y * 3, z - y * 2, 7) > 0.55D) {
+                    world.getBlockAt(x, y + 1, z).setType(Material.AIR, false);
+                }
             }
         }
     }
