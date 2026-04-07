@@ -9,12 +9,17 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.persistence.PersistentDataContainer;
+import org.bukkit.persistence.PersistentDataType;
+import org.bukkit.util.Vector;
 
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
 
 public final class FarLandsBossEventListener implements Listener {
+
+    private static final String FAR_LANDS_BOSS_MARKER = "farlands_boss_marker";
 
     private final FarLandsPlugin plugin;
     private final Set<UUID> activeBosses = new HashSet<>();
@@ -50,6 +55,10 @@ public final class FarLandsBossEventListener implements Listener {
         if (!activeBosses.isEmpty()) {
             return;
         }
+        refreshActiveBosses();
+        if (!activeBosses.isEmpty()) {
+            return;
+        }
 
         long cooldownMs = plugin.getConfig().getLong("farlands.boss-event.spawn-cooldown-seconds", 900) * 1000L;
         if ((System.currentTimeMillis() - lastSpawnAtMillis) < cooldownMs) {
@@ -67,9 +76,21 @@ public final class FarLandsBossEventListener implements Listener {
 
     private void spawnBossNear(Player player) {
         World world = player.getWorld();
-        Location base = player.getLocation().clone().add(8, 0, 8);
-        int y = Math.max(world.getHighestBlockYAt(base), world.getSeaLevel() + 2);
-        Location spawn = new Location(world, base.getX(), y, base.getZ());
+        Location playerLocation = player.getLocation();
+        Vector deeperFarLandsDirection = new Vector(playerLocation.getX(), 0, playerLocation.getZ());
+        if (deeperFarLandsDirection.lengthSquared() < 0.0001D) {
+            deeperFarLandsDirection = playerLocation.getDirection().setY(0);
+        }
+        if (deeperFarLandsDirection.lengthSquared() < 0.0001D) {
+            deeperFarLandsDirection = new Vector(1, 0, 0);
+        }
+        deeperFarLandsDirection.normalize();
+
+        double arenaDistanceFromPlayer = 100.0D;
+        double x = playerLocation.getX() + (deeperFarLandsDirection.getX() * arenaDistanceFromPlayer);
+        double z = playerLocation.getZ() + (deeperFarLandsDirection.getZ() * arenaDistanceFromPlayer);
+
+        Location spawn = findTopOfFarLands(world, x, z);
 
         Warden boss = world.spawn(spawn, Warden.class, entity -> {
             entity.setCustomName(ChatColor.DARK_PURPLE + "Far Lands Aberration");
@@ -77,6 +98,7 @@ public final class FarLandsBossEventListener implements Listener {
             entity.setHealth(Math.min(entity.getMaxHealth(), 250.0));
             entity.setPersistent(true);
             entity.setRemoveWhenFarAway(false);
+            markAsFarLandsBoss(entity.getPersistentDataContainer());
         });
 
         activeBosses.add(boss.getUniqueId());
@@ -86,10 +108,36 @@ public final class FarLandsBossEventListener implements Listener {
                 + ChatColor.LIGHT_PURPLE + world.getName() + " " + spawn.getBlockX() + " " + spawn.getBlockY() + " " + spawn.getBlockZ());
     }
 
+    private Location findTopOfFarLands(World world, double centerX, double centerZ) {
+        int baseX = (int) Math.floor(centerX);
+        int baseZ = (int) Math.floor(centerZ);
+        int bestX = baseX;
+        int bestZ = baseZ;
+        int highestY = world.getSeaLevel() + 2;
+
+        int scanRadius = 8;
+        for (int offsetX = -scanRadius; offsetX <= scanRadius; offsetX++) {
+            for (int offsetZ = -scanRadius; offsetZ <= scanRadius; offsetZ++) {
+                int checkX = baseX + offsetX;
+                int checkZ = baseZ + offsetZ;
+                int candidateY = world.getHighestBlockYAt(checkX, checkZ);
+                if (candidateY > highestY) {
+                    highestY = candidateY;
+                    bestX = checkX;
+                    bestZ = checkZ;
+                }
+            }
+        }
+
+        return new Location(world, bestX + 0.5D, highestY + 1.0D, bestZ + 0.5D);
+    }
+
     @EventHandler
     public void onEntityDeath(EntityDeathEvent event) {
         LivingEntity entity = event.getEntity();
-        if (!activeBosses.remove(entity.getUniqueId())) {
+        boolean wasTracked = activeBosses.remove(entity.getUniqueId());
+        boolean wasMarkedBoss = isMarkedFarLandsBoss(entity.getPersistentDataContainer());
+        if (!wasTracked && !wasMarkedBoss) {
             return;
         }
 
@@ -105,5 +153,25 @@ public final class FarLandsBossEventListener implements Listener {
         }
 
         Bukkit.broadcastMessage(ChatColor.GOLD + "The Far Lands Aberration was defeated! Loot dropped at its death location.");
+    }
+
+    private void refreshActiveBosses() {
+        activeBosses.clear();
+        for (World world : Bukkit.getWorlds()) {
+            for (LivingEntity entity : world.getLivingEntities()) {
+                if (isMarkedFarLandsBoss(entity.getPersistentDataContainer())) {
+                    activeBosses.add(entity.getUniqueId());
+                }
+            }
+        }
+    }
+
+    private void markAsFarLandsBoss(PersistentDataContainer container) {
+        container.set(new NamespacedKey(plugin, FAR_LANDS_BOSS_MARKER), PersistentDataType.BYTE, (byte) 1);
+    }
+
+    private boolean isMarkedFarLandsBoss(PersistentDataContainer container) {
+        Byte marker = container.get(new NamespacedKey(plugin, FAR_LANDS_BOSS_MARKER), PersistentDataType.BYTE);
+        return marker != null && marker == (byte) 1;
     }
 }
