@@ -11,6 +11,7 @@ import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
+import org.bukkit.util.Vector;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -75,22 +76,21 @@ public final class FarLandsBossEventListener implements Listener {
 
     private void spawnBossNear(Player player) {
         World world = player.getWorld();
-        int threshold = plugin.getThreshold();
-        int arenaDistance = threshold + 100;
         Location playerLocation = player.getLocation();
-        double x;
-        double z;
-        if (Math.abs(playerLocation.getX()) >= Math.abs(playerLocation.getZ())) {
-            x = Math.signum(playerLocation.getX()) * arenaDistance;
-            z = 0;
-        } else {
-            x = 0;
-            z = Math.signum(playerLocation.getZ()) * arenaDistance;
+        Vector deeperFarLandsDirection = new Vector(playerLocation.getX(), 0, playerLocation.getZ());
+        if (deeperFarLandsDirection.lengthSquared() < 0.0001D) {
+            deeperFarLandsDirection = playerLocation.getDirection().setY(0);
         }
+        if (deeperFarLandsDirection.lengthSquared() < 0.0001D) {
+            deeperFarLandsDirection = new Vector(1, 0, 0);
+        }
+        deeperFarLandsDirection.normalize();
 
-        Location spawn = new Location(world, x, world.getSeaLevel() + 2, z);
-        int y = Math.max(world.getHighestBlockYAt(spawn), world.getSeaLevel() + 2);
-        spawn.setY(y);
+        double arenaDistanceFromPlayer = 100.0D;
+        double x = playerLocation.getX() + (deeperFarLandsDirection.getX() * arenaDistanceFromPlayer);
+        double z = playerLocation.getZ() + (deeperFarLandsDirection.getZ() * arenaDistanceFromPlayer);
+
+        Location spawn = findTopOfFarLands(world, x, z);
 
         Warden boss = world.spawn(spawn, Warden.class, entity -> {
             entity.setCustomName(ChatColor.DARK_PURPLE + "Far Lands Aberration");
@@ -106,6 +106,30 @@ public final class FarLandsBossEventListener implements Listener {
 
         Bukkit.broadcastMessage(ChatColor.DARK_PURPLE + "A Far Lands boss has appeared at "
                 + ChatColor.LIGHT_PURPLE + world.getName() + " " + spawn.getBlockX() + " " + spawn.getBlockY() + " " + spawn.getBlockZ());
+    }
+
+    private Location findTopOfFarLands(World world, double centerX, double centerZ) {
+        int baseX = (int) Math.floor(centerX);
+        int baseZ = (int) Math.floor(centerZ);
+        int bestX = baseX;
+        int bestZ = baseZ;
+        int highestY = world.getSeaLevel() + 2;
+
+        int scanRadius = 8;
+        for (int offsetX = -scanRadius; offsetX <= scanRadius; offsetX++) {
+            for (int offsetZ = -scanRadius; offsetZ <= scanRadius; offsetZ++) {
+                int checkX = baseX + offsetX;
+                int checkZ = baseZ + offsetZ;
+                int candidateY = world.getHighestBlockYAt(checkX, checkZ);
+                if (candidateY > highestY) {
+                    highestY = candidateY;
+                    bestX = checkX;
+                    bestZ = checkZ;
+                }
+            }
+        }
+
+        return new Location(world, bestX + 0.5D, highestY + 1.0D, bestZ + 0.5D);
     }
 
     @EventHandler
