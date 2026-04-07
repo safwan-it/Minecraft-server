@@ -39,4 +39,3 @@ public final class ReviveCommand implements CommandExecutor {
         return true;
     }
 }
-

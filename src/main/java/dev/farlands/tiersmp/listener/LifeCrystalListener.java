@@ -60,6 +60,12 @@ public final class LifeCrystalListener implements Listener {
             return;
         }
 
+        if (event.isShiftClick()) {
+            event.setCancelled(true);
+            player.sendMessage(ChatColor.RED + "Shift-click crafting is disabled for Life Crystals.");
+            return;
+        }
+
         if (!tierService.canCraftLifeCrystal(player)) {
             event.setCancelled(true);
             player.sendMessage(ChatColor.RED + "You already crafted the max number of life crystals.");

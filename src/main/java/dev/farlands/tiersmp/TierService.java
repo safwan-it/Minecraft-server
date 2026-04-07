@@ -362,33 +362,35 @@ public final class TierService {
             default -> 32.0;
         };
 
-        if (player.getAttribute(Attribute.MAX_HEALTH) != null) {
-            player.getAttribute(Attribute.MAX_HEALTH).setBaseValue(maxHealth);
+        if (player.getAttribute(Attribute.GENERIC_MAX_HEALTH) != null) {
+            player.getAttribute(Attribute.GENERIC_MAX_HEALTH).setBaseValue(maxHealth);
             if (player.getHealth() > maxHealth) {
                 player.setHealth(maxHealth);
             }
         }
 
         player.removePotionEffect(PotionEffectType.SPEED);
-        player.removePotionEffect(PotionEffectType.INCREASE_DAMAGE);
-        player.removePotionEffect(PotionEffectType.DAMAGE_RESISTANCE);
+        player.removePotionEffect(PotionEffectType.STRENGTH);
+        player.removePotionEffect(PotionEffectType.RESISTANCE);
 
         if (profile.getTier() >= 2) {
             player.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, Integer.MAX_VALUE, 0, true, false));
         }
         if (profile.getTier() >= 3) {
-            player.addPotionEffect(new PotionEffect(PotionEffectType.INCREASE_DAMAGE, Integer.MAX_VALUE, 0, true, false));
+            player.addPotionEffect(new PotionEffect(PotionEffectType.STRENGTH, Integer.MAX_VALUE, 0, true, false));
         }
         if (profile.getTier() >= 4) {
-            player.addPotionEffect(new PotionEffect(PotionEffectType.DAMAGE_RESISTANCE, Integer.MAX_VALUE, 0, true, false));
+            player.addPotionEffect(new PotionEffect(PotionEffectType.RESISTANCE, Integer.MAX_VALUE, 0, true, false));
         }
 
-        applyClassEffects(player, profile.getSelectedClass());
+        if (profile.getTier() >= 5) {
+            applyClassEffects(player, profile.getSelectedClass());
+        }
     }
 
     private void applyClassEffects(Player player, String selectedClass) {
-        player.removePotionEffect(PotionEffectType.FAST_DIGGING);
-        player.removePotionEffect(PotionEffectType.JUMP);
+        player.removePotionEffect(PotionEffectType.HASTE);
+        player.removePotionEffect(PotionEffectType.JUMP_BOOST);
         player.removePotionEffect(PotionEffectType.LUCK);
 
         if (selectedClass == null) {
@@ -396,9 +398,9 @@ public final class TierService {
         }
 
         switch (selectedClass) {
-            case "warrior" -> player.addPotionEffect(new PotionEffect(PotionEffectType.INCREASE_DAMAGE, Integer.MAX_VALUE, 0, true, false));
-            case "ranger" -> player.addPotionEffect(new PotionEffect(PotionEffectType.JUMP, Integer.MAX_VALUE, 1, true, false));
-            case "guardian" -> player.addPotionEffect(new PotionEffect(PotionEffectType.FAST_DIGGING, Integer.MAX_VALUE, 0, true, false));
+            case "warrior" -> player.addPotionEffect(new PotionEffect(PotionEffectType.STRENGTH, Integer.MAX_VALUE, 0, true, false));
+            case "ranger" -> player.addPotionEffect(new PotionEffect(PotionEffectType.JUMP_BOOST, Integer.MAX_VALUE, 1, true, false));
+            case "guardian" -> player.addPotionEffect(new PotionEffect(PotionEffectType.HASTE, Integer.MAX_VALUE, 0, true, false));
             default -> {
             }
         }
@@ -451,7 +453,7 @@ public final class TierService {
 
     private TierProfile loadProfile(UUID playerId) {
         File file = profileFile(playerId);
-        TierProfile profile = new TierProfile(playerId);
+        TierProfile profile = new TierProfile(playerId, maxLives);
         if (!file.exists()) {
             return profile;
         }

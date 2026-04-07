@@ -14,10 +14,10 @@ public final class TierProfile {
     private int craftedLifeCrystals;
     private boolean dead;
 
-    public TierProfile(UUID playerId) {
+    public TierProfile(UUID playerId, int startingLives) {
         this.playerId = playerId;
         this.tier = 1;
-        this.lives = 3;
+        this.lives = Math.max(1, startingLives);
     }
 
     public UUID getPlayerId() {
