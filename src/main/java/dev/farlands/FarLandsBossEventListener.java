@@ -62,6 +62,10 @@ public final class FarLandsBossEventListener implements Listener {
         if (!activeBosses.isEmpty()) {
             return;
         }
+        refreshActiveBosses();
+        if (!activeBosses.isEmpty()) {
+            return;
+        }
 
         if (now < nextBossRefreshAtMillis) {
             return;
