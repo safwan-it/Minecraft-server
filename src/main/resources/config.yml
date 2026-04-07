@@ -1,0 +1,46 @@
+farlands:
+  enabled: true
+  threshold: 12000000
+  intensity: 1.0
+  max-pillar-height: 70
+  base-carve-chance: 0.08
+  worlds:
+    - world
+  boss-event:
+    enabled: true
+    spawn-cooldown-seconds: 900
+    loot:
+      diamonds: 8
+      netherite-scrap: 2
+      echo-shards: 6
+
+tiersmp:
+  max-tier: 6
+  rankup:
+    required-kills: 1
+  rankdown:
+    on-player-death: true
+  lives:
+    max-lives: 3
+    max-crafts-per-player: 3
+  quest-path:
+    tier-1: Catch 10 fish + 1 player kill
+    tier-2: Mine 16 diamonds + 1 player kill
+    tier-3: Wear full diamond armor + 1 player kill
+    tier-4: Kill the Ender Dragon + 1 player kill
+    tier-5: Defeat the Far Lands boss + 1 player kill
+    tier-6: No quest
+  tier-buffs:
+    tier-1: 6 hearts
+    tier-2: 8 hearts + Speed I
+    tier-3: 10 hearts + Strength I
+    tier-4: 12 hearts + Resistance I
+    tier-5: 14 hearts and all previous buffs
+    tier-6: 16 hearts and all previous buffs
+  classes:
+    warrior:
+      ability: Permanent Strength I
+    ranger:
+      ability: Jump Boost II
+    guardian:
+      ability: Haste I
